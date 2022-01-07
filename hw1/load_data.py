@@ -1,6 +1,8 @@
 import numpy as np
 import os
 import random
+
+from torch._C import device
 import torch
 
 
@@ -59,7 +61,7 @@ class DataGenerator(object):
     A "class" is considered a class of omniglot digits.
     """
 
-    def __init__(self, num_classes, num_samples_per_class, config={}, device = torch.device('cpu')):
+    def __init__(self, num_classes, num_samples_per_class, config={}, device = 'cpu'):
         """
         Args:
             num_classes: int
@@ -174,4 +176,4 @@ class DataGenerator(object):
             train_query_label = sampled_labels[ batch_ind , -1, :, : ]
             sampled_labels[batch_ind, -1, :, : ] = train_query_label[ shuffled_index ]
 
-        return torch.tensor(sampled_input, dtype=torch.float), torch.tensor(sampled_labels, dtype=torch.float)
+        return torch.tensor(sampled_input, dtype=torch.float).to(self.device), torch.tensor(sampled_labels, dtype=torch.float).to(self.device)

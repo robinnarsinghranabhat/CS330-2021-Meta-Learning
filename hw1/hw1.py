@@ -1,5 +1,7 @@
 import argparse
 import os
+from pathlib import Path
+from typing_extensions import runtime
 import torch
 
 import torch.nn.functional as F
@@ -101,10 +103,13 @@ class MANN(nn.Module):
         #############################
         # breakpoint()
         preds = preds[:, -1 , :, :]
+        preds = preds.permute((0,2,1))
         # preds = preds.contiguous().view(-1,preds.size(2))
         # convert into class indexes for torch to understand
         labels = labels[:, -1 , :, :]
         _, labels  = labels.max(dim=2)
+
+        # breakpoint()
 
         loss = self.loss_func(preds, labels) 
         return loss
@@ -132,9 +137,19 @@ def model_eval(images, labels, model):
 
 
 def main(config):
-    # device = torch.device("cuda")
-    device = torch.device("cpu")
-    writer = SummaryWriter(config.logdir)
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    print('USING DEVICE : ', device)
+
+    run_name = f"K_{config.num_samples}_N_{config.num_classes}_B_{config.meta_batch_size}_H_{config.model_size}"
+
+    # Save Artifacts : models, [ Todo : plots, summary ]
+    trained_model_dir = Path(f'./trained_models/{run_name}/')
+    if not os.path.exists(trained_model_dir): 
+        os.makedirs(trained_model_dir)
+
+    # Save Runs : Logs, [Todo : hyperparams, ..]
+    run_dir = Path( f'./{config.logdir}' , f'{config.model_type}' , f'{run_name}' )
+    writer = SummaryWriter(run_dir)
 
     # Download Omniglot Dataset
     if not os.path.isdir('./omniglot_resized'):
@@ -156,10 +171,13 @@ def main(config):
     
     optim = torch.optim.Adam(model.parameters(), lr = 1e-3)
     
+    prev_loss = 10000 ## some high loss
+
     for step in range(config.training_steps):
         images, labels = data_generator.sample_batch('train', config.meta_batch_size)
         _, train_loss = train_step(images, labels, model, optim)
 
+        
         if (step + 1) % config.log_every == 0:
             images, labels = data_generator.sample_batch('test', 
                                                          config.meta_batch_size)
@@ -170,23 +188,37 @@ def main(config):
                                         config.num_classes])
             pred = torch.argmax(pred[:, -1, :, :], axis=2)
             labels = torch.argmax(labels[:, -1, :, :], axis=2)
-            
-            print(' Train Loss : ',train_loss.cpu().numpy(), step )
-            print(' Test Loss : ',test_loss.cpu().numpy(), step )
-            writer.add_scalar('Train Loss', train_loss.cpu().numpy(), step)
-            writer.add_scalar('Test Loss', test_loss.cpu().numpy(), step)
+
+            # Log to Tensorboard
+            writer.add_scalar('Train Loss', train_loss, step)
+            writer.add_scalar('Test Loss', test_loss, step)
             writer.add_scalar('Meta-Test Accuracy', 
                               pred.eq(labels).double().mean().item(),
                               step)
+            
+            # Help Prints and Model Saving
+            test_loss = test_loss.cpu().numpy()
+            train_loss = train_loss.cpu().numpy()
+
+            print('AT STEP : ', step)
+            print(' Train Loss : ', train_loss, step )
+            print(' Test Loss : ', test_loss, step )
+
+            # Saving the Model
+            if test_loss < prev_loss:
+                prev_loss= test_loss
+                torch.save(model.state_dict(), trained_model_dir / f'model_at_step_{step}' )
+                print(f'Model Updated at : step {step}')   
 
 if __name__=='__main__':
     parser = argparse.ArgumentParser()
+    parser.add_argument('--model_type', type=str, default='LSTM_only')
     parser.add_argument('--num_classes', type=int, default=5)
-    parser.add_argument('--num_samples', type=int, default=1)
-    parser.add_argument('--meta_batch_size', type=int, default=128)
+    parser.add_argument('--num_samples', type=int, default=10)
+    parser.add_argument('--meta_batch_size', type=int, default=256)
     parser.add_argument('--logdir', type=str, 
-                        default='run/log')
+                        default='runs')
     parser.add_argument('--training_steps', type=int, default=10000)
-    parser.add_argument('--log_every', type=int, default=100)
+    parser.add_argument('--log_every', type=int, default=1)
     parser.add_argument('--model_size', type=int, default=128)
     main(parser.parse_args())

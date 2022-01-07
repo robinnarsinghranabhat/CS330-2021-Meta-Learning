@@ -24,6 +24,7 @@ setup : venv ## Creates a new virtual environment and install the development de
 	. $(VENV_ACTIVATE) && (\
 		pip install -r ./requirements.txt ;\
 		python -m ipykernel install --user --name $(KERNAL_NAME) --display-name "$(KERNAL_NAME)" ;\
+		python -m ipykernel install --user --name meta_learn --display-name "meta_learn"
 	)
 
 clean: ## Removes virtual environment.
@@ -31,3 +32,6 @@ clean: ## Removes virtual environment.
 
 clean_kernel:
 	yes | jupyter kernelspec uninstall -y $(KERNAL_NAME)
+
+start_tensorboard"
+    tensorboard --logdir="C:\Users\Robin\Documents\MOOC\CS330-2021-Meta-Learning\hw1\runs"
