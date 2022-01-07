@@ -18,4 +18,6 @@ scipy
 six
 sklearn
 tensorboard
-torch==1.9
+# torch==1.9
+# conda install pytorch torchvision cudatoolkit=10.0 -c pytorch
+
