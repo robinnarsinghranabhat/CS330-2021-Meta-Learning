@@ -1,0 +1,56 @@
+repos:
+  - repo: local
+    hooks:
+      # TODO: Apply changes and formating only over changed files
+      - id: isort
+        name: isort
+        profile: black
+        stages: [commit]
+        language: system
+        entry: python -m isort ./hw1
+        types: [python]
+        exclude: |
+            (?x)(
+              hw1/omniglot_resized/*|
+              hw1/dnc/*|
+            )
+
+      - id: black
+        name: black
+        stages: [commit]
+        language: system
+        entry: python -m black ./hw1
+        types: [python]
+        exclude: |
+            (?x)(
+              hw1/omniglot_resized/*|
+              hw1/dnc/*|
+            )
+
+      - id: flake8
+        name: flake8
+        stages: [commit]
+        language: system
+        entry: python -m flake8 ./hw1
+        types: [python]
+        exclude: |
+            (?x)(
+              hw1/omniglot_resized/*|
+              hw1/dnc/*|
+            )
+
+      # - id: pytest
+      #   name: pytest
+      #   stages: [commit]
+      #   language: system
+      #   entry: python -m pytest --suppress-no-test-exit-code ./hw1/tests
+      #   types: [python]
+      #   exclude: |
+      #       (?x)(
+      #           setup.py|
+      #           t2/feature/deprecated/|
+      #           t2/model/deprecated/|
+      #           t2/utils/deprecated/|
+      #           airflow/*|
+      #           pricing_app/*|
+      #       )
