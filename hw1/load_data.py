@@ -8,7 +8,7 @@ from torch._C import device
 
 def one_hot_encode(x, n_classes):
     """
-    One hot encode a list of sample labels. 
+    One hot encode a list of sample labels.
     Return a one-hot encoded vector for each label.
     : x: List of sample Labels
     : return: Numpy array of one-hot encoded labels
@@ -18,7 +18,7 @@ def one_hot_encode(x, n_classes):
 
 def get_images(paths, labels, nb_samples=None, shuffle=True):
     """
-    Takes a set of character folders and labels and 
+    Takes a set of character folders and labels and
     returns paths to image files paired with labels.
     Args:
         paths: A list of character folders
@@ -40,7 +40,6 @@ def get_images(paths, labels, nb_samples=None, shuffle=True):
         random.shuffle(images_labels)
     return images_labels
 
-import torch
 
 def image_file_to_array(filename, dim_input):
     """

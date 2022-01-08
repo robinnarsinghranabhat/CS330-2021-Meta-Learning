@@ -7,34 +7,34 @@ repos:
         # profile: black
         stages: [commit]
         language: system
-        entry: python -m isort ./hw1
+        entry: python -m isort
         types: [python]
-        exclude: |
+        exclude: >
             (?x)(
-              hw1/omniglot_resized/*|
-              hw1/dnc/*|
+              ^hw1/omniglot_resized/*|
+              ^hw1/dnc/*
             )$
 
       - id: black
         name: black
         stages: [commit]
         language: system
-        entry: python -m black ./hw1
+        entry: python -m black
         types: [python]
-        exclude: |
+        exclude: >
             (?x)(
-              hw1/omniglot_resized/*|
-              hw1/dnc/*|
+              ^hw1/omniglot_resized/*|
+              ^hw1/dnc/*
             )$
 
-      - id: flake8
-        name: flake8
-        stages: [commit]
-        language: system
-        entry: python -m flake8 ./hw1
-        types: [python]
-        exclude: |
-            (?x)(
-              hw1/omniglot_resized/*|
-              hw1/dnc/*|
-            )$
+      # - id: flake8
+      #   name: flake8
+      #   stages: [commit]
+      #   language: system
+      #   entry: python -m flake8
+      #   types: [python]
+      #   exclude: >
+      #       (?x)(
+      #         ^hw1/omniglot_resized/*|
+      #         ^hw1/dnc/*
+      #       )$
