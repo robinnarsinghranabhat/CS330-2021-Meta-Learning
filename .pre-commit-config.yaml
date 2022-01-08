@@ -37,20 +37,4 @@ repos:
             (?x)(
               hw1/omniglot_resized/*|
               hw1/dnc/*|
-            )
-
-      # - id: pytest
-      #   name: pytest
-      #   stages: [commit]
-      #   language: system
-      #   entry: python -m pytest --suppress-no-test-exit-code ./hw1/tests
-      #   types: [python]
-      #   exclude: |
-      #       (?x)(
-      #           setup.py|
-      #           t2/feature/deprecated/|
-      #           t2/model/deprecated/|
-      #           t2/utils/deprecated/|
-      #           airflow/*|
-      #           pricing_app/*|
-      #       )
+            ) 
