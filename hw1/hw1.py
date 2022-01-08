@@ -1,6 +1,8 @@
 import argparse
 import os
 from pathlib import Path
+from distutils.dir_util import copy_tree
+from datetime import datetime
 
 import torch
 import torch.nn.functional as F
@@ -11,6 +13,8 @@ from typing_extensions import runtime
 
 from dnc import DNC
 from load_data import DataGenerator
+
+today_date = datetime.today().strftime('%Y-%m-%d')
 
 
 class MANN(nn.Module):
@@ -34,19 +38,19 @@ class MANN(nn.Module):
 
         self.loss_func = nn.CrossEntropyLoss()
 
-        # self.dnc = DNC(
-        #                input_size=num_classes + input_size,
-        #                output_size=num_classes,
-        #                hidden_size=model_size,
-        #                rnn_type='lstm',
-        #                num_layers=1,
-        #                num_hidden_layers=1,
-        #                nr_cells=num_classes,
-        #                cell_size=64,
-        #                read_heads=1,
-        #                batch_first=True,
-        #                gpu_id=0,
-        #                )
+        self.dnc = DNC(
+                       input_size=num_classes + input_size,
+                       output_size=num_classes,
+                       hidden_size=model_size,
+                       rnn_type='lstm',
+                       num_layers=1,
+                       num_hidden_layers=1,
+                       nr_cells=num_classes,
+                       cell_size=64,
+                       read_heads=1,
+                       batch_first=True,
+                       gpu_id=0,
+                       )
 
     def forward(self, input_images, input_labels):
         """
@@ -76,14 +80,19 @@ class MANN(nn.Module):
             (batch_size, k_plus_1 * num_classes, num_classes + inp_dim),
         )
 
-        lstm_output_1, (h_1, c_1) = self.layer1(combined_inp_and_label)
-        lstm_output_2, (h_2, c_2) = self.layer2(lstm_output_1)
+        # lstm_output_1, (h_1, c_1) = self.layer1(combined_inp_and_label)
+        # lstm_output_2, (h_2, c_2) = self.layer2(lstm_output_1)
 
-        lstm_output_2 = torch.reshape(
-            lstm_output_2, (batch_size, k_plus_1, num_classes, num_classes)
+        # lstm_output_2 = torch.reshape(
+        #     lstm_output_2, (batch_size, k_plus_1, num_classes, num_classes)
+        # )
+
+        # return lstm_output_2
+        dnc_out, _ = self.dnc(combined_inp_and_label)
+        dnc_out = torch.reshape(
+            dnc_out, (batch_size, k_plus_1, num_classes, num_classes)
         )
-
-        return lstm_output_2
+        return dnc_out
 
     def loss_function(self, preds, labels):
         """
@@ -101,7 +110,6 @@ class MANN(nn.Module):
         #############################
         #### YOUR CODE GOES HERE ####
         #############################
-        # breakpoint()
         preds = preds[:, -1, :, :]
         preds = preds.permute((0, 2, 1))
         # preds = preds.contiguous().view(-1,preds.size(2))
@@ -109,7 +117,6 @@ class MANN(nn.Module):
         labels = labels[:, -1, :, :]
         _, labels = labels.max(dim=2)
 
-        # breakpoint()
 
         loss = self.loss_func(preds, labels)
         return loss
@@ -142,12 +149,12 @@ def main(config):
     run_name = f"K_{config.num_samples}_N_{config.num_classes}_B_{config.meta_batch_size}_H_{config.model_size}"
 
     # Save Artifacts : models, [ Todo : plots, summary ]
-    trained_model_dir = Path(f"./trained_models/{run_name}/")
+    trained_model_dir = Path(f"./trained_models/{today_date}/{run_name}/")
     if not os.path.exists(trained_model_dir):
         os.makedirs(trained_model_dir)
 
     # Save Runs : Logs, [Todo : hyperparams, ..]
-    run_dir = Path(f"./{config.logdir}", f"{config.model_type}", f"{run_name}")
+    run_dir = Path(f"./{config.logdir}", f"{today_date}" , f"{config.model_type}", f"{run_name}")
     writer = SummaryWriter(run_dir)
 
     # Download Omniglot Dataset
@@ -204,9 +211,23 @@ def main(config):
             if test_loss < prev_loss:
                 prev_loss = test_loss
                 torch.save(
-                    model.state_dict(), trained_model_dir / f"model_at_step_{step}"
+                    model.state_dict(), trained_model_dir / f"model"
                 )
                 print(f"Model Updated at : step {step}")
+
+                ## Additionally Saving the model at Drive || For Colab
+                try:
+                    if config.colab_mode:
+                        print('Copying Artifacts to colab')
+                        save_to_colab(run_dir, trained_model_dir)
+                except:
+                    print("Couldn't save to Drive .. check if it's mounted")
+                
+
+
+def save_to_colab(run_dir, trained_model_dir):
+    copy_tree('runs', '/content/drive/MyDrive/CS330_Artifacts/runs' )
+    copy_tree('trained_models', '/content/drive/MyDrive/CS330_Artifacts/trained_models' )
 
 
 if __name__ == "__main__":
@@ -219,4 +240,6 @@ if __name__ == "__main__":
     parser.add_argument("--training_steps", type=int, default=10000)
     parser.add_argument("--log_every", type=int, default=1)
     parser.add_argument("--model_size", type=int, default=128)
+    parser.add_argument("--colab_mode", type=bool, default=0)
+
     main(parser.parse_args())
