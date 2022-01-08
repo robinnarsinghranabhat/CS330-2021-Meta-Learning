@@ -1,12 +1,13 @@
-## hw1 
-hw1/.venv
-hw1/run
-hw1/__pycache__
-hw1/dnc/__pycache__/
-hw1/omniglot_resized
-hw1/all_runs
-hw1/.ipynb_checkpoints
-hw1/.DS_Store
+## global
+**/__pycache__/
+**/.pytest_cache
+**/.venv/
+**/.DS_Store
+**/ipynb_checkpoints
 
-## pytest
-.pytest_cache
+## hw1 
+hw1/
+hw1/run
+hw1/omniglot_resized
+hw1/trained_models
+hw1/runs
