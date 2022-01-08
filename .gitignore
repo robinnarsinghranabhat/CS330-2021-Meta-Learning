@@ -1,3 +1,4 @@
+## hw1 
 hw1/.venv
 hw1/run
 hw1/__pycache__
@@ -6,3 +7,6 @@ hw1/omniglot_resized
 hw1/all_runs
 hw1/.ipynb_checkpoints
 hw1/.DS_Store
+
+## pytest
+.pytest_cache
