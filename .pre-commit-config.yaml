@@ -4,16 +4,16 @@ repos:
       # TODO: Apply changes and formating only over changed files
       - id: isort
         name: isort
-        profile: black
+        # profile: black
         stages: [commit]
         language: system
         entry: python -m isort ./hw1
         types: [python]
         exclude: |
             (?x)(
-              ./hw1/omniglot_resized/*|
-              ./hw1/dnc/*|
-            )
+              hw1/omniglot_resized/*|
+              hw1/dnc/*|
+            )$
 
       - id: black
         name: black
@@ -23,9 +23,9 @@ repos:
         types: [python]
         exclude: |
             (?x)(
-              ./hw1/omniglot_resized/*|
-              ./hw1/dnc/*|
-            )
+              hw1/omniglot_resized/*|
+              hw1/dnc/*|
+            )$
 
       - id: flake8
         name: flake8
@@ -37,4 +37,4 @@ repos:
             (?x)(
               hw1/omniglot_resized/*|
               hw1/dnc/*|
-            ) 
+            )$

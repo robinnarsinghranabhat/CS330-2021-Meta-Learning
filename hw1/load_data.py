@@ -41,6 +41,7 @@ def get_images(paths, labels, nb_samples=None, shuffle=True):
     return images_labels
 
 import torch
+
 def image_file_to_array(filename, dim_input):
     """
     Takes an image path and returns numpy array
