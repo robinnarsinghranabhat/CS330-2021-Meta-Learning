@@ -11,8 +11,8 @@ repos:
         types: [python]
         exclude: |
             (?x)(
-              hw1/omniglot_resized/*|
-              hw1/dnc/*|
+              ./hw1/omniglot_resized/*|
+              ./hw1/dnc/*|
             )
 
       - id: black
@@ -23,8 +23,8 @@ repos:
         types: [python]
         exclude: |
             (?x)(
-              hw1/omniglot_resized/*|
-              hw1/dnc/*|
+              ./hw1/omniglot_resized/*|
+              ./hw1/dnc/*|
             )
 
       - id: flake8
