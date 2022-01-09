@@ -4,9 +4,9 @@
 **/.venv/
 **/.DS_Store
 **/ipynb_checkpoints
+**/*.zip
 
 ## hw1 
-hw1/
 hw1/run
 hw1/omniglot_resized
 hw1/trained_models
