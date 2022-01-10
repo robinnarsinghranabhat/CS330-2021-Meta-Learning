@@ -3,11 +3,15 @@
 **/.pytest_cache
 **/.venv/
 **/.DS_Store
-**/ipynb_checkpoints
+**/.ipynb_checkpoints
+**/logs/
 
 ## hw1 
 hw1/
 hw1/run
-hw1/omniglot_resized
+**/omniglot_resized*
 hw1/trained_models
 hw1/runs
+
+## hw2
+

@@ -33,5 +33,9 @@ clean: ## Removes virtual environment.
 clean_kernel:
 	yes | jupyter kernelspec uninstall -y $(KERNAL_NAME)
 
-start_tensorboard"
+start_tensorboard:
     tensorboard --logdir="C:\Users\Robin\Documents\MOOC\CS330-2021-Meta-Learning\hw1\runs"
+
+
+start_venv:
+	source ../../../CS\ 2214N\ Mannings\ NLP/a4/.venv/bin/activate
