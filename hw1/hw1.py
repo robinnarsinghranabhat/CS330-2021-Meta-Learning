@@ -1,24 +1,30 @@
 import argparse
 import os
-from pathlib import Path
-from distutils.dir_util import copy_tree
 from datetime import datetime
+from distutils.dir_util import copy_tree
+from pathlib import Path
 
 import torch
 import torch.nn.functional as F
+from dnc import DNC
 from google_drive_downloader import GoogleDriveDownloader as gdd
+from load_data import DataGenerator
 from torch import nn
 from torch.utils.tensorboard import SummaryWriter
 from typing_extensions import runtime
 
-from dnc import DNC
-from load_data import DataGenerator
-
-today_date = datetime.today().strftime('%Y-%m-%d')
+today_date = datetime.today().strftime("%Y-%m-%d")
 
 
 class MANN(nn.Module):
-    def __init__(self, num_classes, samples_per_class, model_size=128, input_size=784):
+    def __init__(
+        self,
+        num_classes,
+        samples_per_class,
+        model_size=128,
+        input_size=784,
+        model_type="LSTM",
+    ):
         super(MANN, self).__init__()
 
         def initialize_weights(model):
@@ -39,18 +45,20 @@ class MANN(nn.Module):
         self.loss_func = nn.CrossEntropyLoss()
 
         self.dnc = DNC(
-                       input_size=num_classes + input_size,
-                       output_size=num_classes,
-                       hidden_size=model_size,
-                       rnn_type='lstm',
-                       num_layers=1,
-                       num_hidden_layers=1,
-                       nr_cells=num_classes,
-                       cell_size=64,
-                       read_heads=1,
-                       batch_first=True,
-                       gpu_id=0,
-                       )
+            input_size=num_classes + input_size,
+            output_size=num_classes,
+            hidden_size=model_size,
+            rnn_type="lstm",
+            num_layers=1,
+            num_hidden_layers=1,
+            nr_cells=num_classes,
+            cell_size=64,
+            read_heads=1,
+            batch_first=True,
+            gpu_id=0,
+        )
+
+        self.model_type = model_type
 
     def forward(self, input_images, input_labels):
         """
@@ -66,9 +74,6 @@ class MANN(nn.Module):
             out: tensor
             A tensor of shape [B, K+1, N, N] of class predictions
         """
-        #############################
-        #### YOUR CODE GOES HERE ####
-        #############################
 
         batch_size, k_plus_1, num_classes, inp_dim = input_images.shape
 
@@ -80,19 +85,22 @@ class MANN(nn.Module):
             (batch_size, k_plus_1 * num_classes, num_classes + inp_dim),
         )
 
-        # lstm_output_1, (h_1, c_1) = self.layer1(combined_inp_and_label)
-        # lstm_output_2, (h_2, c_2) = self.layer2(lstm_output_1)
+        if "DNC" not in self.model_type:
+            lstm_output_1, (h_1, c_1) = self.layer1(combined_inp_and_label)
+            final_out, _ = self.layer2(lstm_output_1)
 
-        # lstm_output_2 = torch.reshape(
-        #     lstm_output_2, (batch_size, k_plus_1, num_classes, num_classes)
-        # )
+            final_out = torch.reshape(
+                final_out, (batch_size, k_plus_1, num_classes, num_classes)
+            )
 
-        # return lstm_output_2
-        dnc_out, _ = self.dnc(combined_inp_and_label)
-        dnc_out = torch.reshape(
-            dnc_out, (batch_size, k_plus_1, num_classes, num_classes)
-        )
-        return dnc_out
+            return final_out
+
+        else:
+            dnc_out, _ = self.dnc(combined_inp_and_label)
+            dnc_out = torch.reshape(
+                dnc_out, (batch_size, k_plus_1, num_classes, num_classes)
+            )
+            return dnc_out
 
     def loss_function(self, preds, labels):
         """
@@ -107,23 +115,17 @@ class MANN(nn.Module):
         Returns:
             scalar loss
         """
-        #############################
-        #### YOUR CODE GOES HERE ####
-        #############################
+
+        # Select only the last k+1th predictions for meta-test period to backpropagate loss
         preds = preds[:, -1, :, :]
         preds = preds.permute((0, 2, 1))
-        # preds = preds.contiguous().view(-1,preds.size(2))
-        # convert into class indexes for torch to understand
+
+        # Select only the last k+1th labels at meta-test period to backpropagate loss
         labels = labels[:, -1, :, :]
         _, labels = labels.max(dim=2)
 
-
         loss = self.loss_func(preds, labels)
         return loss
-
-        # SOLUTION:
-
-        print("hi")
 
 
 def train_step(images, labels, model, optim):
@@ -142,6 +144,19 @@ def model_eval(images, labels, model):
     return predictions.detach(), loss.detach()
 
 
+def load_ckp(checkpoint_fpath, model, optimizer):
+    checkpoint = torch.load(checkpoint_fpath)
+    model.load_state_dict(checkpoint["state_dict"])
+    optimizer.load_state_dict(checkpoint["optimizer"])
+    return (
+        model,
+        optimizer,
+        checkpoint["prev_loss"],
+        checkpoint["epoch"],
+        checkpoint["meta_test_acc"],
+    )
+
+
 def main(config):
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print("USING DEVICE : ", device)
@@ -149,12 +164,16 @@ def main(config):
     run_name = f"K_{config.num_samples}_N_{config.num_classes}_B_{config.meta_batch_size}_H_{config.model_size}"
 
     # Save Artifacts : models, [ Todo : plots, summary ]
-    trained_model_dir = Path(f"./trained_models/{today_date}/{run_name}/")
+    trained_model_dir = Path(
+        f"./trained_models/{today_date}/{config.model_type}/{run_name}/"
+    )
     if not os.path.exists(trained_model_dir):
         os.makedirs(trained_model_dir)
 
     # Save Runs : Logs, [Todo : hyperparams, ..]
-    run_dir = Path(f"./{config.logdir}", f"{today_date}" , f"{config.model_type}", f"{run_name}")
+    run_dir = Path(
+        f"./{config.logdir}", f"{today_date}", f"{config.model_type}", f"{run_name}"
+    )
     writer = SummaryWriter(run_dir)
 
     # Download Omniglot Dataset
@@ -172,13 +191,33 @@ def main(config):
     )
 
     # Create model and optimizer
-    model = MANN(config.num_classes, config.num_samples, model_size=config.model_size).to(device).float()
-
+    model = (
+        MANN(
+            config.num_classes,
+            config.num_samples,
+            model_size=config.model_size,
+            model_type=config.model_type,
+        )
+        .to(device)
+        .float()
+    )
+    print(f"Model Initialized with : {config.model_type}")
     optim = torch.optim.Adam(model.parameters(), lr=1e-3)
+    prev_loss = 10000  ## some high loss for first time training
+    prev_step = 0  ## When was the last step upto which model was trained
 
-    prev_loss = 10000  ## some high loss
+    # continue from earlier trained model if available
+    if (trained_model_dir / "model_ckp").exists():
+        model, optim, prev_loss, prev_step, meta_test_acc = load_ckp(
+            trained_model_dir / "model_ckp", model, optim
+        )
+        print("Continuing with last trained checkpoint ")
+        print(
+            f"STEP : {prev_step} || LOSS : {prev_loss} || Meta-Test Accuracy : {meta_test_acc}"
+        )
 
-    for step in range(config.training_steps):
+    for step in range(prev_step, config.training_steps):
+
         images, labels = data_generator.sample_batch("train", config.meta_batch_size)
         _, train_loss = train_step(images, labels, model, optim)
 
@@ -192,12 +231,12 @@ def main(config):
             pred = torch.argmax(pred[:, -1, :, :], axis=2)
             labels = torch.argmax(labels[:, -1, :, :], axis=2)
 
+            meta_test_acc = pred.eq(labels).double().mean().item()
+
             # Log to Tensorboard
             writer.add_scalar("Train Loss", train_loss, step)
             writer.add_scalar("Test Loss", test_loss, step)
-            writer.add_scalar(
-                "Meta-Test Accuracy", pred.eq(labels).double().mean().item(), step
-            )
+            writer.add_scalar("Meta-Test Accuracy", meta_test_acc, step)
 
             # Help Prints and Model Saving
             test_loss = test_loss.cpu().numpy()
@@ -210,24 +249,29 @@ def main(config):
             # Saving the Model
             if test_loss < prev_loss:
                 prev_loss = test_loss
-                torch.save(
-                    model.state_dict(), trained_model_dir / f"model"
-                )
+                checkpoint = {
+                    "epoch": step + 1,
+                    "state_dict": model.state_dict(),
+                    "optimizer": optim.state_dict(),
+                    "prev_loss": prev_loss,
+                    "meta_test_acc": meta_test_acc,
+                }
+
+                torch.save(checkpoint, trained_model_dir / f"model_ckp")
                 print(f"Model Updated at : step {step}")
 
                 ## Additionally Saving the model at Drive || For Colab
                 try:
                     if config.colab_mode:
-                        print('Copying Artifacts to colab')
+                        print("Copying Artifacts to colab")
                         save_to_colab(run_dir, trained_model_dir)
                 except:
                     print("Couldn't save to Drive .. check if it's mounted")
-                
 
 
 def save_to_colab(run_dir, trained_model_dir):
-    copy_tree('runs', '/content/drive/MyDrive/CS330_Artifacts/runs' )
-    copy_tree('trained_models', '/content/drive/MyDrive/CS330_Artifacts/trained_models' )
+    copy_tree("runs", "/content/drive/MyDrive/CS330_Artifacts/runs")
+    copy_tree("trained_models", "/content/drive/MyDrive/CS330_Artifacts/trained_models")
 
 
 if __name__ == "__main__":

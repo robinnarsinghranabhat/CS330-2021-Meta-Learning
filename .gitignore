@@ -5,13 +5,11 @@
 **/.DS_Store
 **/.ipynb_checkpoints
 **/logs/
+**/*.zip
 
 ## hw1 
-hw1/
 hw1/run
 **/omniglot_resized*
 hw1/trained_models
 hw1/runs
-
-## hw2
 
