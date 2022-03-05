@@ -1,5 +1,6 @@
 import os
 import random
+from pathlib import Path
 
 import numpy as np
 import torch
@@ -80,8 +81,9 @@ class DataGenerator(object):
         """
         self.num_samples_per_class = num_samples_per_class
         self.num_classes = num_classes
-
-        data_folder = config.get("data_folder", "./omniglot_resized")
+        data_folder = Path(__file__).parent / config.get(
+            "data_folder", "./omniglot_resized"
+        )
         self.img_size = config.get("img_size", (28, 28))
 
         self.dim_input = np.prod(self.img_size)
